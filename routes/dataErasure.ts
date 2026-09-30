@@ -101,15 +101,23 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
       }
 
       if (req.body.layout) {
-        const filePath: string = path.resolve(req.body.layout).toLowerCase()
-        const isForbiddenFile: boolean = (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
+        const allowedDirectory: string = path.resolve('views')
+        let filePath: string = ''
+        if (typeof req.body.layout === 'string') {
+          filePath = path.resolve(req.body.layout)
+          if (!filePath.startsWith(allowedDirectory + path.sep)) {
+            filePath = path.resolve(allowedDirectory, req.body.layout)
+          }
+        }
+        const isPathAllowed: boolean = filePath !== '' && filePath.startsWith(allowedDirectory + path.sep)
+        const isForbiddenFile: boolean = !isPathAllowed || (filePath.toLowerCase().includes('ftp') || filePath.toLowerCase().includes('ctf.key') || filePath.toLowerCase().includes('encryptionkeys'))
         if (!isForbiddenFile) {
           res.render('dataErasureResult', {
             ...req.body,
             ...themeVars
           }, (error, html) => {
             if (!html || error) {
-              next(new Error(error.message))
+              next(new Error(error?.message ?? 'Failed to render layout'))
             } else {
               const sendlfrResponse: string = html.slice(0, 100) + '......'
               res.send(sendlfrResponse)
